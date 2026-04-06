@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>TV Hub</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root{--bg:#0a0a0f;--card:#12131a;--card-hover:#1a1b25;--border:#1e2030;--text:#e8e8ed;--dim:#6b6d80;--gold:#f0b429;--green:#34d399;--blue:#60a5fa;--red:#f87171;--purple:#a78bfa;--cyan:#22d3ee;--orange:#fb923c;--pink:#f472b6;--r:16px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);width:1920px;height:1080px;overflow:hidden;position:relative}
+body::before{content:'';position:fixed;inset:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 20% 20%,rgba(96,165,250,.03),transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(240,180,41,.03),transparent 50%);z-index:0;pointer-events:none}
+
+/* HOME */
+#home{position:absolute;inset:0;display:flex;flex-direction:column;padding:32px 48px;z-index:1}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;height:56px}
+.hdr h1{font-size:38px;font-weight:800;letter-spacing:-1px;background:linear-gradient(135deg,#fff,#8b8da0);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.clk{font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:20px;flex:1}
+.tile{background:var(--card);border:2px solid var(--border);border-radius:var(--r);cursor:pointer;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .25s}
+.tile:hover,.tile:focus{background:var(--card-hover);transform:scale(1.03);outline:none}
+.tile:focus{border-color:var(--gold);box-shadow:0 0 30px rgba(240,180,41,.2)}
+.t-icon{font-size:72px;margin-bottom:14px;transition:transform .3s}.tile:focus .t-icon,.tile:hover .t-icon{transform:scale(1.1)}
+.t-lbl{font-size:25px;font-weight:600}.t-sub{font-size:25px;color:var(--dim);margin-top:4px}
+
+/* SCREENS */
+.scr{position:absolute;inset:0;background:var(--bg);z-index:10;display:none;flex-direction:column;padding:32px 48px;opacity:0;transform:translateY(20px);transition:opacity .3s,transform .3s}
+.scr.on{display:flex;opacity:1;transform:translateY(0)}
+.sh{display:flex;align-items:center;gap:24px;margin-bottom:24px;flex-shrink:0}
+.bk{background:var(--card);border:2px solid var(--border);color:var(--text);font:600 28px 'Outfit',sans-serif;padding:12px 32px;border-radius:14px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px}
+.bk:focus{outline:none;border-color:var(--text);box-shadow:0 0 20px rgba(255,255,255,.1)}
+.bk svg{width:26px;height:26px}
+.rl{background:linear-gradient(135deg,#1a2a1a,#1a2520);border:2px solid rgba(52,211,153,.3);color:var(--green);font:600 22px 'Outfit',sans-serif;padding:12px 32px;border-radius:14px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px}
+.rl:focus{outline:none;border-color:var(--green);box-shadow:0 0 20px rgba(52,211,153,.25)}
+.rl svg{width:22px;height:22px}
+.rl.spin svg{animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.st{font-size:38px;font-weight:700;letter-spacing:-.5px;flex:1}
+.sb{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.sb::-webkit-scrollbar{width:6px}.sb::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* LOADER */
+.ld{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px}
+.ld-s{width:56px;height:56px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite}
+.ld-t{font-size:25px;color:var(--dim)}
+.err{text-align:center;padding:40px;color:var(--red);font-size:25px}
+
+/* RACING */
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.rc{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:18px;transition:border-color .2s,box-shadow .2s;cursor:pointer;outline:none}
+.rc:hover{border-color:rgba(240,180,41,.3)}
+.rc:focus{border-color:var(--gold);box-shadow:0 0 24px rgba(240,180,41,.25)}
+.rch{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.rtm{font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:600;color:var(--green);background:rgba(52,211,153,.1);padding:3px 10px;border-radius:6px}
+.rcn{font-size:25px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.rm{font-size:25px;color:var(--dim);margin-bottom:8px}
+.hr{display:flex;align-items:center;padding:5px 0;gap:8px}
+.hp{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:700;flex-shrink:0}
+.hp.p1{background:rgba(240,180,41,.15);color:var(--gold)}.hp.p2{background:rgba(192,192,192,.1);color:#c0c0c0}.hp.p3{background:rgba(205,127,50,.1);color:#cd7f32}
+.hc{font-family:'JetBrains Mono',monospace;font-size:25px;color:var(--dim);width:18px;text-align:center}
+.hn{flex:1;font-size:25px;font-weight:500}.hn.fv{color:var(--gold)}
+.ho{font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:600;color:var(--dim)}
+.rd{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:14px;flex-wrap:wrap;font-size:25px}
+.rd span{color:var(--dim);text-transform:uppercase;letter-spacing:.5px}.rd strong{color:var(--text);font-weight:500;margin-left:3px}
+.rs{font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:600;text-transform:uppercase;letter-spacing:1px;padding:3px 8px;border-radius:4px}
+.rs.wi{background:rgba(52,211,153,.15);color:var(--green)}.rs.up{background:rgba(240,180,41,.15);color:var(--gold)}
+
+/* CONTENT CARDS (Movies/TV/NASA) — SHORTER */
+.cg{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.cc{background:var(--card);border:2px solid var(--border);border-radius:12px;overflow:hidden;transition:all .2s;cursor:pointer}
+.cc:hover,.cc:focus{outline:none;border-color:var(--gold);transform:translateY(-4px);box-shadow:0 0 24px rgba(240,180,41,.2)}
+.cp{width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--border)}
+.ci{padding:10px 12px}
+.ct{font-size:25px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.cy{font-size:25px;color:var(--dim)}.cr{font-size:25px;font-weight:600;color:var(--gold)}
+
+/* NASA CARDS */
+.nasa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.nasa-card{background:var(--card);border:2px solid var(--border);border-radius:14px;overflow:hidden;transition:all .2s;cursor:pointer}
+.nasa-card:hover,.nasa-card:focus{outline:none;border-color:var(--cyan);transform:translateY(-4px);box-shadow:0 0 24px rgba(34,211,238,.2)}
+.nasa-img-thumb{width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--border)}
+.nasa-info{padding:14px 16px}
+.nasa-title{font-size:25px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nasa-date{font-size:25px;color:var(--dim);margin-top:4px;font-family:'JetBrains Mono',monospace}
+
+/* MODAL */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.mo.show{opacity:1;pointer-events:all}
+.md{background:var(--card);border:1px solid var(--border);border-radius:20px;max-width:100%;width:92%;max-height:95vh;overflow-y:auto;display:flex;gap:28px;padding:32px;position:relative}
+.md-poster{width:280px;flex-shrink:0;border-radius:14px;object-fit:cover}
+.md-body{flex:1;display:flex;flex-direction:column;gap:10px}
+.md-title{font-size:30px;font-weight:800;line-height:1.2}
+.md-tag{font-size:25px;color:var(--dim);font-style:italic}
+.md-stats{display:flex;gap:16px;flex-wrap:wrap;margin:6px 0}
+.md-stat{background:var(--bg);padding:6px 14px;border-radius:10px;font-size:25px}
+.md-stat strong{color:var(--gold)}
+.md-ov{font-size:25px;line-height:1.6;color:var(--dim)}
+.md-x{position:absolute;top:16px;right:16px;background:var(--bg);border:2px solid var(--border);color:var(--text);width:48px;height:48px;border-radius:12px;cursor:pointer;font-size:25px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.md-x:focus{outline:none;border-color:var(--red);color:var(--red);box-shadow:0 0 20px rgba(248,113,113,.25)}
+.md-genres{display:flex;gap:8px;flex-wrap:wrap}
+.md-genre{background:rgba(167,139,250,.1);color:var(--purple);padding:4px 12px;border-radius:6px;font-size:25px;font-weight:500}
+/* NASA modal - large image */
+.md-nasa-img{max-width:100%;max-height:60vh;border-radius:14px;object-fit:contain;margin:0 auto;display:block}
+/* Racing modal text overrides */
+.md.race-modal .rtm{font-size:32px!important}
+.md.race-modal .rcn{font-size:34px!important}
+.md.race-modal .rs{font-size:26px!important;padding:6px 14px!important}
+.md.race-modal .rm{font-size:28px!important}
+.md.race-modal .hn{font-size:26px!important}
+.md.race-modal .ho{font-size:26px!important}
+.md.race-modal .hp{width:36px;height:36px;font-size:20px!important}
+.md.race-modal .hc{font-size:22px!important}
+.md.race-modal .hr{padding:10px 0!important}
+.md.race-modal .rd{font-size:22px!important;gap:18px}
+.md.race-modal .rd span{font-size:20px!important}
+.md.race-modal .rd strong{font-size:22px!important}
+
+/* FEATURE CENTER */
+.fc{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:0 60px}
+.fc .be{font-size:100px;margin-bottom:28px}
+.fc .ft{font-size:34px;font-weight:700;margin-bottom:18px;line-height:1.3;max-width:1200px}
+.fc .fb{font-size:25px;color:var(--dim);line-height:1.6;max-width:1100px}
+.fc .fs{font-size:25px;color:var(--dim);margin-top:12px;font-style:italic}
+.rv{margin-top:24px;background:linear-gradient(135deg,#2a1a0a,#25201a);border:2px solid rgba(251,146,60,.3);color:var(--orange);font:600 22px 'Outfit',sans-serif;padding:14px 44px;border-radius:14px;cursor:pointer;transition:all .2s}
+.rv:focus{outline:none;border-color:var(--orange);box-shadow:0 0 20px rgba(251,146,60,.25)}
+
+/* UPCOMING TV CARDS */
+.up-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:18px;padding:4px 2px}
+.up-card{background:var(--card);border:2px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:all .2s;cursor:default;position:relative}
+.up-card:focus{outline:none;border-color:var(--pink);box-shadow:0 0 24px rgba(244,114,182,.25);transform:translateY(-4px)}
+.up-card:hover{border-color:rgba(244,114,182,.3);transform:translateY(-3px)}
+.up-thumb{width:100%;aspect-ratio:16/12;object-fit:cover;background:var(--border);display:block}
+.up-thumb-placeholder{width:100%;aspect-ratio:16/12;background:linear-gradient(135deg,#1a1b25,#12131a);display:flex;align-items:center;justify-content:center;font-size:40px}
+.up-rank{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.75);color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.up-body{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:6px}
+.up-title{font-size:22px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.up-meta{font-size:18px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
+.up-premiere{font-size:18px;color:var(--orange);font-weight:600}
+.up-rating{font-size:18px;color:var(--gold);font-weight:600}
+
+/* RACING SUBTABS */
+.rtabs{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;flex-shrink:0}
+.rtab{background:var(--card);border:2px solid var(--border);color:var(--dim);font:600 20px 'Outfit',sans-serif;padding:8px 22px;border-radius:10px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.rtab:focus{outline:none;border-color:var(--gold);color:var(--text);box-shadow:0 0 16px rgba(240,180,41,.2)}
+.rtab.active{border-color:var(--gold);color:var(--gold);background:rgba(240,180,41,.08)}
+.rtab:hover{border-color:rgba(240,180,41,.4);color:var(--text)}
+
+/* HISTORY */
+.hl{max-width:1400px;margin:0 auto;padding:0 8px}
+.h-date-banner{text-align:center;margin-bottom:28px;display:flex;align-items:center;justify-content:center;gap:16px}
+.h-date-banner .h-date-txt{font-size:32px;font-weight:800;color:var(--purple);letter-spacing:1px}
+.h-date-banner .h-date-line{flex:1;height:2px;background:linear-gradient(to right,transparent,rgba(167,139,250,.3),transparent)}
+.hi{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 28px;margin-bottom:14px;transition:all .2s;display:flex;align-items:flex-start;gap:24px;cursor:default;outline:none;position:relative;overflow:hidden}
+.hi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--purple);opacity:.4;border-radius:4px 0 0 4px;transition:opacity .2s}
+.hi:hover::before,.hi:focus::before{opacity:1}
+.hi:hover{border-color:rgba(167,139,250,.4);background:var(--card-hover)}
+.hi:focus{outline:none;border-color:var(--purple);box-shadow:0 0 20px rgba(167,139,250,.2);background:var(--card-hover)}
+.hi:focus::before{background:var(--purple);opacity:1}
+.hy-wrap{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;width:100px}
+.hy{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:800;color:var(--purple);line-height:1}
+.hy-ago{font-size:17px;color:var(--dim);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.h-divider{width:1px;background:var(--border);align-self:stretch;flex-shrink:0}
+.ht{font-size:24px;line-height:1.6;color:var(--text);flex:1;padding-top:2px}
+</style>
+</head>
+<body>
+
+<div id="home">
+  <div class="hdr"><h1>TV Hub</h1><div class="clk" id="clk"></div></div>
+  <div class="grid" id="homeGrid">
+    <div class="tile" tabindex="0" data-id="racing"><div class="t-icon">🏇</div><div class="t-lbl">Horse Racing</div><div class="t-sub">Live Results</div></div>
+    <div class="tile" tabindex="0" data-id="movies"><div class="t-icon">🎬</div><div class="t-lbl">Trending Movies</div><div class="t-sub">TMDB</div></div>
+    <div class="tile" tabindex="0" data-id="tvshows"><div class="t-icon">📺</div><div class="t-lbl">TV Shows</div><div class="t-sub">Popular Now</div></div>
+    <div class="tile" tabindex="0" data-id="nasa"><div class="t-icon">🚀</div><div class="t-lbl">NASA</div><div class="t-sub">Gallery</div></div>
+    <div class="tile" tabindex="0" data-id="upcoming"><div class="t-icon">📅</div><div class="t-lbl">Upcoming TV</div><div class="t-sub">Next Episode</div></div>
+    <div class="tile" tabindex="0" data-id="history"><div class="t-icon">📜</div><div class="t-lbl">This Day</div><div class="t-sub">In History</div></div>
+    <div class="tile" tabindex="0" data-id="riddle"><div class="t-icon">🧩</div><div class="t-lbl">Riddle</div><div class="t-sub">Of the Day</div></div>
+    <div class="tile" tabindex="0" data-id="joke"><div class="t-icon">😂</div><div class="t-lbl">Joke</div><div class="t-sub">Of the Day</div></div>
+  </div>
+</div>
+
+<!-- SCREENS -->
+<div class="scr" id="scr-racing" style="overflow:hidden">
+  <div class="sh">
+    <button class="bk" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>Back</button>
+    <div class="st" style="color:var(--gold)">🏇 Horse Racing</div>
+    <button class="rl" tabindex="0" id="rl-racing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>Reload</button>
+  </div>
+  <div class="rtabs" id="racingTabs"></div>
+  <div class="sb" id="racingBody"></div>
+</div>
+
+<div class="scr" id="scr-movies"><div class="sh">
+  <button class="bk" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>Back</button>
+  <div class="st" style="color:var(--red)">🎬 Trending Movies</div>
+  <button class="rl" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>Reload</button>
+</div><div class="sb" id="moviesBody"></div></div>
+
+<div class="scr" id="scr-tvshows"><div class="sh">
+  <button class="bk" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>Back</button>
+  <div class="st" style="color:var(--blue)">📺 Popular TV Shows</div>
+  <button class="rl" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>Reload</button>
+</div><div class="sb" id="tvshowsBody"></div></div>
+
+<div class="scr" id="scr-nasa"><div class="sh">
+  <button class="bk" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>Back</button>
+  <div class="st" style="color:var(--cyan)">🚀 NASA Gallery</div>
+  <button class="rl" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>Reload</button>
+</div><div class="sb" id="nasaBody"></div></div>
+
+<div class="scr" id="scr-upcoming">
+  <div class="sh">
+    <button class="bk" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>Back</button>
+    <div class="st" style="color:var(--pink)">📅 Upcoming TV Shows</div>
+    <button class="rl" tabindex="0" id="rl-upcoming"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>Reload</button>
+  </div>
+  <div class="sb" id="upcomingBody"></div>
+</div>
+
+<div class="scr" id="scr-history"><div class="sh">
+  <button class="bk" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>Back</button>
+  <div class="st" style="color:var(--purple)">📜 This Day in History</div>
+  <button class="rl" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>Reload</button>
+</div><div class="sb" id="historyBody"></div></div>
+
+<div class="scr" id="scr-riddle"><div class="sh">
+  <button class="bk" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>Back</button>
+  <div class="st" style="color:var(--orange)">🧩 Riddle of the Day</div>
+  <button class="rl" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>New Riddle</button>
+</div><div class="sb" id="riddleBody"></div></div>
+
+<div class="scr" id="scr-joke"><div class="sh">
+  <button class="bk" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>Back</button>
+  <div class="st" style="color:var(--green)">😂 Joke of the Day</div>
+  <button class="rl" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>New Joke</button>
+</div><div class="sb" id="jokeBody"></div></div>
+
+<!-- MODAL -->
+<div class="mo" id="mOverlay"><div class="md" id="mContent"></div></div>
+
+<script>
+const PROXY='https://racing-results.kavanagh-m-rob.workers.dev';
+const TMDB='eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIxNDY3YzQ0NjNmZTY2Zjg1NTc3MDAwZDAyNTFiNjllZiIsIm5iZiI6MTc3NDk4NjA1NS4wODUsInN1YiI6IjY5Y2MyMzQ3OWI4NWMxYWU3MGFjNGRmOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.BDkR-1aZk5emqpi3HAAeVIU1hkVAOaFIs2V27XZ_mvo';
+const NASA_KEY='cQVDvwpdFz0u34enmqgkBxLMEwTq6Kdkg6hWluJG';
+
+// Clock
+!function ck(){const n=new Date();document.getElementById('clk').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');setTimeout(ck,1000)}();
+
+// ═══════ NAVIGATION ═══════
+let curScr=null,lastFocus=null;
+const loaders={racing:loadRacing,movies:loadMovies,tvshows:loadTVShows,nasa:loadNasa,upcoming:loadUpcoming,history:loadHistory,riddle:loadRiddle,joke:loadJoke};
+
+function openScr(id){
+  document.getElementById('home').style.display='none';
+  const s=document.getElementById('scr-'+id);
+  s.style.display='flex';s.offsetHeight;s.classList.add('on');
+  curScr=id;
+  loaders[id]?.();
+  setTimeout(()=>{
+    const hdrBtns=s.querySelectorAll('.sh .bk,.sh .rl');
+    const first=hdrBtns[0];
+    if(first)first.focus();
+  },120);
+}
+function goHome(){
+  if(curScr){const s=document.getElementById('scr-'+curScr);s.classList.remove('on');s.style.display='none';}
+  document.getElementById('home').style.display='flex';curScr=null;
+  setTimeout(()=>{const t=document.querySelector('.tile');if(t)t.focus()},80);
+}
+
+// Home tile clicks
+document.querySelectorAll('.tile').forEach(t=>{
+  t.addEventListener('click',()=>openScr(t.dataset.id));
+});
+
+// Back buttons
+document.querySelectorAll('.bk').forEach(b=>{
+  b.addEventListener('click',e=>{e.stopPropagation();e.preventDefault();goHome()});
+});
+
+// Reload buttons
+document.querySelectorAll('.rl').forEach(b=>{
+  b.addEventListener('click',()=>{if(curScr&&loaders[curScr])loaders[curScr]()});
+});
+
+// ═══════ D-PAD / TV REMOTE NAVIGATION ═══════
+document.addEventListener('keydown',e=>{
+  const modal=isModalOpen();
+
+  // BACK / ESCAPE / TV Back button — close modal first, then screen, never exit from home
+  if(e.key==='Backspace'||e.key==='Escape'||e.key==='XF86Back'||e.key==='GoBack'||e.key==='BrowserBack'||e.key==='AndroidBack'||e.keyCode===8||e.keyCode===27||e.keyCode===461||e.keyCode===10009){
+    e.preventDefault();e.stopPropagation();
+    if(modal){closeModal();return}
+    if(curScr){goHome();return}
+    return;
+  }
+
+  // ENTER — if modal is open (and not just opened), close it. Otherwise activate focused element.
+  if(e.key==='Enter'){
+    e.preventDefault();
+    if(isModalOpen()&&Date.now()-modalOpenTime>400){closeModal();return}
+    if(!isModalOpen()){
+      const el=document.activeElement;
+      if(el&&el!==document.body){el.click();return}
+    }
+    return;
+  }
+
+  if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))return;
+  e.preventDefault();
+
+  // In modal: any arrow keeps focus on close button
+  if(modal){
+    const cb=document.querySelector('#mContent .md-x');
+    if(cb)cb.focus();
+    return;
+  }
+
+  // ── HOME GRID (4-col) ──────────────────────────────────────────────
+  if(!curScr){
+    const items=[...document.querySelectorAll('#homeGrid .tile')];
+    const cols=4;
+    const cur=document.activeElement,ci=items.indexOf(cur);
+    if(ci===-1){items[0]?.focus();return}
+    let ti=-1;
+    if(e.key==='ArrowRight')ti=ci+1;
+    else if(e.key==='ArrowLeft')ti=ci-1;
+    else if(e.key==='ArrowDown')ti=ci+cols;
+    else if(e.key==='ArrowUp')ti=ci-cols;
+    if(ti>=0&&ti<items.length)items[ti].focus();
+    return;
+  }
+
+  // ── SCREEN ────────────────────────────────────────────────────────
+  const scr=document.getElementById('scr-'+curScr);
+  const hdr=[...scr.querySelectorAll('.sh .bk,.sh .rl')];
+
+  // Racing: three focus zones — header, subtabs, grid
+  if(curScr==='racing'){
+    const tabs=[...scr.querySelectorAll('.rtab')];
+    const body=[...scr.querySelectorAll('.sb .rc')];
+    const cur=document.activeElement;
+    const inHdr=hdr.includes(cur);
+    const inTabs=tabs.includes(cur);
+    const bi=body.indexOf(cur);
+    const inBody=bi!==-1;
+    const cols=3;
+
+    if(inHdr){
+      const hi=hdr.indexOf(cur);
+      if(e.key==='ArrowRight'&&hi+1<hdr.length){hdr[hi+1].focus();return}
+      if(e.key==='ArrowLeft'&&hi>0){hdr[hi-1].focus();return}
+      if(e.key==='ArrowDown'){tabs.length?tabs[0].focus():(body[0]?.focus());return}
+      return;
+    }
+    if(inTabs){
+      const ti=tabs.indexOf(cur);
+      if(e.key==='ArrowRight'&&ti+1<tabs.length){tabs[ti+1].focus();return}
+      if(e.key==='ArrowLeft'&&ti>0){tabs[ti-1].focus();return}
+      if(e.key==='ArrowUp'){hdr[0]?.focus();return}
+      if(e.key==='ArrowDown'&&body.length){body[0].focus();body[0].scrollIntoView({block:'nearest',behavior:'smooth'});return}
+      return;
+    }
+    if(inBody){
+      let ni=-1;
+      if(e.key==='ArrowRight'){ni=bi+1;if(ni>=body.length||Math.floor(ni/cols)!==Math.floor(bi/cols))return}
+      else if(e.key==='ArrowLeft'){ni=bi-1;if(ni<0||Math.floor(ni/cols)!==Math.floor(bi/cols))return}
+      else if(e.key==='ArrowDown'){ni=bi+cols;}
+      else if(e.key==='ArrowUp'){ni=bi-cols;if(ni<0){tabs.length?tabs[0].focus():hdr[0]?.focus();return}}
+      if(ni>=0&&ni<body.length){body[ni].focus();body[ni].scrollIntoView({block:'nearest',behavior:'smooth'})}
+      return;
+    }
+    hdr[0]?.focus();return;
+  }
+
+  // Detect body items and their column count
+  let bodyItems=[],cols=1;
+  const sb=scr.querySelector('.sb');
+  if(sb){
+    const rcItems=[...sb.querySelectorAll('.rc')];
+    const ccItems=[...sb.querySelectorAll('.cc')];
+    const nasaItems=[...sb.querySelectorAll('.nasa-card')];
+    const upItems=[...sb.querySelectorAll('.up-card')];
+    const hiItems=[...sb.querySelectorAll('.hi')];
+    const otherItems=[...sb.querySelectorAll('.rv')];
+
+    if(rcItems.length){bodyItems=rcItems;cols=3;}
+    else if(ccItems.length){bodyItems=ccItems;cols=5;}
+    else if(nasaItems.length){bodyItems=nasaItems;cols=3;}
+    else if(upItems.length){bodyItems=upItems;cols=5;}
+    else if(hiItems.length){bodyItems=hiItems;cols=1;}
+    else if(otherItems.length){bodyItems=otherItems;cols=1;}
+  }
+
+  const cur=document.activeElement;
+  const inHdr=hdr.includes(cur);
+  const bi=bodyItems.indexOf(cur);
+  const inBody=bi!==-1;
+
+  if(inHdr){
+    const hi=hdr.indexOf(cur);
+    if(e.key==='ArrowRight'&&hi+1<hdr.length){hdr[hi+1].focus();return}
+    if(e.key==='ArrowLeft'&&hi>0){hdr[hi-1].focus();return}
+    if(e.key==='ArrowDown'&&bodyItems.length){
+      bodyItems[0].focus();bodyItems[0].scrollIntoView({block:'nearest',behavior:'smooth'});return
+    }
+    return;
+  }
+
+  if(inBody){
+    let ti=-1;
+    if(e.key==='ArrowRight'){ti=bi+1;if(ti>=bodyItems.length||Math.floor(ti/cols)!==Math.floor(bi/cols))return}
+    else if(e.key==='ArrowLeft'){ti=bi-1;if(ti<0||Math.floor(ti/cols)!==Math.floor(bi/cols))return}
+    else if(e.key==='ArrowDown'){ti=bi+cols;}
+    else if(e.key==='ArrowUp'){
+      ti=bi-cols;
+      if(ti<0){hdr.length?hdr[0].focus():(bodyItems[0].focus());return}
+    }
+    if(ti>=0&&ti<bodyItems.length){bodyItems[ti].focus();bodyItems[ti].scrollIntoView({block:'nearest',behavior:'smooth'})}
+    return;
+  }
+
+  // Nothing focused — send to header or first body item
+  if(hdr.length)hdr[0].focus();
+  else if(bodyItems.length)bodyItems[0].focus();
+});
+
+// Auto-focus
+window.addEventListener('load',()=>setTimeout(()=>{document.querySelector('.tile')?.focus()},300));
+
+// ═══════ MODAL ═══════
+let modalState='closed'; // 'closed' | 'loading' | 'open'
+let modalOpenTime=0;
+
+function isModalOpen(){return modalState!=='closed'}
+function closeModal(){
+  if(modalState==='closed')return;
+  modalState='closed';
+  document.getElementById('mOverlay').classList.remove('show');
+  if(lastFocus){lastFocus.focus();lastFocus=null}
+}
+
+async function showDetail(id,type){
+  lastFocus=document.activeElement;
+  modalState='loading';
+  modalOpenTime=Date.now();
+  const o=document.getElementById('mOverlay'),mc=document.getElementById('mContent');
+  mc.innerHTML='<div class="ld"><div class="ld-s"></div></div>';
+  o.classList.add('show');
+  try{
+    const d=await tmdbFetch(`/${type}/${id}?language=en-US`);
+    if(modalState==='closed')return; // was closed while loading
+    const poster=d.poster_path?'https://image.tmdb.org/t/p/w500'+d.poster_path:'';
+    const title=d.title||d.name||'',year=(d.release_date||d.first_air_date||'').substring(0,4);
+    const rating=d.vote_average?d.vote_average.toFixed(1):'—',votes=d.vote_count||0;
+    const runtime=d.runtime?d.runtime+'min':d.number_of_seasons?d.number_of_seasons+' seasons':'';
+    const genres=(d.genres||[]).map(g=>`<span class="md-genre">${g.name}</span>`).join('');
+    mc.innerHTML=`<button class="md-x" tabindex="0">✕</button>
+      ${poster?`<img class="md-poster" src="${poster}">`:''}
+      <div class="md-body"><div class="md-title">${title}</div>
+      ${d.tagline?`<div class="md-tag">"${d.tagline}"</div>`:''}
+      <div class="md-stats"><div class="md-stat">★ <strong>${rating}</strong>/10</div><div class="md-stat"><strong>${votes.toLocaleString()}</strong> votes</div>${year?`<div class="md-stat">${year}</div>`:''}${runtime?`<div class="md-stat">${runtime}</div>`:''}${d.original_language?`<div class="md-stat">${d.original_language.toUpperCase()}</div>`:''}${d.status?`<div class="md-stat">${d.status}</div>`:''}</div>
+      ${genres?`<div class="md-genres">${genres}</div>`:''}
+      <div class="md-ov">${d.overview||''}</div></div>`;
+    modalState='open';
+    setTimeout(()=>{mc.querySelector('.md-x')?.focus()},50);
+  }catch(e){
+    if(modalState==='closed')return;
+    mc.innerHTML=`<div class="err">${e.message}</div><button class="md-x" tabindex="0">✕</button>`;
+    modalState='open';
+  }
+}
+function showNasaDetail(url,title,explanation,date){
+  lastFocus=document.activeElement;
+  modalState='open';
+  modalOpenTime=Date.now();
+  const o=document.getElementById('mOverlay'),mc=document.getElementById('mContent');
+  mc.innerHTML=`<button class="md-x" tabindex="0">✕</button>
+    <div style="display:flex;flex-direction:column;gap:16px;width:100%">
+      <img class="md-nasa-img" src="${url}" alt="${title}">
+      <div class="md-title" style="text-align:center">${title}</div>
+      <div class="nasa-date" style="text-align:center">${date}</div>
+      <div class="md-ov">${explanation?explanation.substring(0,600)+(explanation.length>600?'...':''):''}</div>
+    </div>`;
+  o.classList.add('show');
+  setTimeout(()=>{mc.querySelector('.md-x')?.focus()},50);
+}
+document.getElementById('mOverlay').addEventListener('click',e=>{
+  if(e.target.id==='mOverlay'||e.target.closest('.md-x'))closeModal();
+});
+
+// ═══════ RACING ═══════
+let raceData=[];
+let activeCourse='all';
+
+async function loadRacing(){
+  const b=document.getElementById('racingBody'),btn=document.getElementById('rl-racing');
+  btn?.classList.add('spin');
+  activeCourse='all';
+  b.innerHTML='<div class="ld"><div class="ld-s"></div><div class="ld-t">Loading races...</div></div>';
+  try{
+    const r=await fetch(PROXY);if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    if(!Array.isArray(data)||!data.length){b.innerHTML='<div class="err">No race data available.</div>';btn?.classList.remove('spin');return}
+    raceData=data;
+    buildRacingTabs();
+    renderRacing();
+  }catch(e){b.innerHTML=`<div class="err">${e.message}</div>`}
+  btn?.classList.remove('spin');
+}
+
+function buildRacingTabs(){
+  const courses=['all',...[...new Set(raceData.map(r=>r.courseName||'Unknown'))].sort()];
+  const tabs=document.getElementById('racingTabs');
+  tabs.innerHTML=courses.map(c=>`<button class="rtab${c===activeCourse?' active':''}" tabindex="0" data-course="${c}">${c==='all'?'All Courses':c}</button>`).join('');
+  tabs.querySelectorAll('.rtab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      activeCourse=btn.dataset.course;
+      tabs.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderRacing();
+      // after render, keep focus on this tab
+      btn.focus();
+    });
+  });
+}
+
+function renderRacing(){
+  const b=document.getElementById('racingBody');
+  const filtered=activeCourse==='all'?raceData:raceData.filter(r=>(r.courseName||'Unknown')===activeCourse);
+  if(!filtered.length){b.innerHTML='<div class="err">No races for this course.</div>';return}
+  let h='<div class="rg">';
+  filtered.forEach((race,idx)=>{
+    const globalIdx=raceData.indexOf(race);
+    let t=race.time||'';
+    if(t&&/^\d{2}:\d{2}$/.test(t)){let[hr,mn]=t.split(':').map(Number);hr=(hr+1)%24;t=String(hr).padStart(2,'0')+':'+String(mn).padStart(2,'0')}
+    const st=(race.status||'').toLowerCase();let sc='up',sx=race.status||'Upcoming';
+    if(st.includes('weighed')||st.includes('result')||st.includes('final'))sc='wi';
+    h+=`<div class="rc" tabindex="0" data-race="${globalIdx}"><div class="rch"><div><span class="rtm">${t}</span><span class="rcn" style="margin-left:10px">${race.courseName||''}</span></div><span class="rs ${sc}">${sx}</span></div>`;
+    if(race.name)h+=`<div class="rm">${race.name}${race.distance?' · '+race.distance:''}${race.race_class?' · Class '+race.race_class:''}</div>`;
+    (race.top_horses||[]).forEach(ho=>{
+      const pc=ho.position===1?'p1':ho.position===2?'p2':'p3';
+      h+=`<div class="hr"><div class="hp ${pc}">${ho.position}</div><div class="hc">${ho.saddlecloth_number||''}</div><div class="hn${ho.favourite?' fv':''}">${ho.horse_name||''}</div><div class="ho">${ho.odds||''}</div></div>`;
+    });
+    const ds=[];
+    if(race.runners)ds.push({l:'Runners',v:race.runners});if(race.distances)ds.push({l:'Dist',v:race.distances});
+    if(race.winning_jockeys?.length)ds.push({l:'Jockey',v:race.winning_jockeys[0].name});
+    if(race.winning_trainers?.length)ds.push({l:'Trainer',v:race.winning_trainers[0].name});
+    if(ds.length){h+='<div class="rd">';ds.forEach(d=>h+=`<span>${d.l}</span><strong>${d.v}</strong>`);h+='</div>'}
+    h+='</div>';
+  });
+  b.innerHTML=h+'</div>';
+  b.scrollTop=0;
+}
+
+// Race tile click / Enter — show detail modal
+document.addEventListener('click',e=>{
+  const rc=e.target.closest('.rc[data-race]');
+  if(rc)showRaceDetail(Number(rc.dataset.race));
+});
+
+function showRaceDetail(idx){
+  const race=raceData[idx];if(!race)return;
+  lastFocus=document.activeElement;
+  modalState='open';
+  modalOpenTime=Date.now();
+  let t=race.time||'';
+  if(t&&/^\d{2}:\d{2}$/.test(t)){let[hr,mn]=t.split(':').map(Number);hr=(hr+1)%24;t=String(hr).padStart(2,'0')+':'+String(mn).padStart(2,'0')}
+  const st=(race.status||'').toLowerCase();let sc='up',sx=race.status||'Upcoming';
+  if(st.includes('weighed')||st.includes('result')||st.includes('final'))sc='wi';
+
+  // Build full runners table
+  let runnersHtml='';
+  if(race.runners_detail&&race.runners_detail.length){
+    runnersHtml='<div style="margin-top:16px"><div style="font-size:18px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Full Card</div>';
+    race.runners_detail.forEach(h=>{
+      const pc=h.position===1?'p1':h.position===2?'p2':h.position===3?'p3':'';
+      runnersHtml+=`<div class="hr" style="padding:8px 0;border-bottom:1px solid var(--border)">
+        ${pc?`<div class="hp ${pc}">${h.position}</div>`:`<div style="width:28px;text-align:center;color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:14px">${h.saddlecloth_number||''}</div>`}
+        <div class="hc">${pc?'':''}</div>
+        <div class="hn${h.favourite?' fv':''}" style="flex:1">${h.horse_name||''}${h.jockey?`<span style="color:var(--dim);font-size:13px;margin-left:8px">${h.jockey}</span>`:''}${h.trainer?`<span style="color:var(--dim);font-size:13px;margin-left:6px">(${h.trainer})</span>`:''}</div>
+        <div class="ho">${h.odds||''}</div>
+      </div>`;
+    });
+    runnersHtml+='</div>';
+  } else {
+    // Fallback: use top_horses
+    const horses=race.top_horses||[];
+    if(horses.length){
+      runnersHtml='<div style="margin-top:16px"><div style="font-size:18px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Runners</div>';
+      horses.forEach(h=>{
+        const pc=h.position===1?'p1':h.position===2?'p2':h.position===3?'p3':'';
+        runnersHtml+=`<div class="hr" style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div class="hp ${pc}">${h.position}</div>
+          <div class="hc">${h.saddlecloth_number||''}</div>
+          <div class="hn${h.favourite?' fv':''}">${h.horse_name||''}</div>
+          <div class="ho">${h.odds||''}</div>
+        </div>`;
+      });
+      runnersHtml+='</div>';
+    }
+  }
+
+  // Extra details
+  const extras=[];
+  if(race.runners)extras.push({l:'Runners',v:race.runners});
+  if(race.distances)extras.push({l:'Distances',v:race.distances});
+  if(race.going)extras.push({l:'Going',v:race.going});
+  if(race.prize)extras.push({l:'Prize',v:race.prize});
+  if(race.winning_jockeys?.length)extras.push({l:'Winning Jockey',v:race.winning_jockeys[0].name});
+  if(race.winning_trainers?.length)extras.push({l:'Winning Trainer',v:race.winning_trainers[0].name});
+  if(race.winning_owners?.length)extras.push({l:'Winning Owner',v:race.winning_owners[0].name});
+
+  const extrasHtml=extras.length?`<div class="rd" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">${extras.map(d=>`<span>${d.l}</span><strong>${d.v}</strong>`).join('')}</div>`:'';
+
+  const o=document.getElementById('mOverlay'),mc=document.getElementById('mContent');
+  mc.className='md race-modal';
+  mc.innerHTML=`
+    <button class="md-x" tabindex="0">✕</button>
+    <div style="flex:1;display:flex;flex-direction:column;gap:8px;width:100%">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span class="rtm">${t}</span>
+        <span class="rcn">${race.courseName||''}</span>
+        <span class="rs ${sc}">${sx}</span>
+      </div>
+      ${race.name?`<div class="rm" style="margin-top:8px">${race.name}${race.distance?' · '+race.distance:''}${race.race_class?' · Class '+race.race_class:''}</div>`:''}
+      ${extrasHtml}
+      ${runnersHtml}
+    </div>`;
+  o.classList.add('show');
+  setTimeout(()=>{mc.querySelector('.md-x')?.focus()},50);
+}
+
+
+async function tmdbFetch(ep){
+  const r=await fetch('https://api.themoviedb.org/3'+ep,{headers:{'Authorization':'Bearer '+TMDB,'Content-Type':'application/json'}});
+  if(!r.ok)throw new Error('TMDB '+r.status);return r.json();
+}
+function renderCards(items,type){
+  const mt=type==='movie'?'movie':'tv';
+  let h='<div class="cg">';
+  items.forEach(i=>{
+    const title=type==='movie'?i.title:i.name,date=type==='movie'?i.release_date:i.first_air_date;
+    const year=date?date.substring(0,4):'',poster=i.poster_path?'https://image.tmdb.org/t/p/w342'+i.poster_path:'';
+    const rating=i.vote_average?i.vote_average.toFixed(1):'—';
+    h+=`<div class="cc" tabindex="0" data-tid="${i.id}" data-tt="${mt}">${poster?`<img class="cp" src="${poster}" loading="lazy">`:'<div class="cp" style="display:flex;align-items:center;justify-content:center;font-size:36px">🎬</div>'}<div class="ci"><div class="ct">${title||''}</div><div class="cm"><span class="cy">${year}</span><span class="cr">★ ${rating}</span></div></div></div>`;
+  });
+  return h+'</div>';
+}
+// Delegate clicks on content cards
+document.addEventListener('click',e=>{
+  const cc=e.target.closest('.cc[data-tid]');
+  if(cc)showDetail(cc.dataset.tid,cc.dataset.tt);
+});
+async function loadMovies(){const b=document.getElementById('moviesBody');b.innerHTML='<div class="ld"><div class="ld-s"></div><div class="ld-t">Loading movies...</div></div>';try{const d=await tmdbFetch('/trending/movie/week?language=en-US');b.innerHTML=renderCards(d.results||[],'movie')}catch(e){b.innerHTML=`<div class="err">${e.message}</div>`}}
+async function loadTVShows(){const b=document.getElementById('tvshowsBody');b.innerHTML='<div class="ld"><div class="ld-s"></div><div class="ld-t">Loading TV shows...</div></div>';try{const d=await tmdbFetch('/trending/tv/week?language=en-US');b.innerHTML=renderCards(d.results||[],'tv')}catch(e){b.innerHTML=`<div class="err">${e.message}</div>`}}
+
+// ═══════ UPCOMING TV (API) ═══════
+const UPCOMING_API='https://rx4up4hm0e.execute-api.eu-west-1.amazonaws.com';
+let upcomingCache=null,upcomingCacheTime=0;
+
+async function loadUpcoming(){
+  const b=document.getElementById('upcomingBody'),btn=document.getElementById('rl-upcoming');
+  btn?.classList.add('spin');
+  if(upcomingCache&&Date.now()-upcomingCacheTime<1800000){renderUpcoming(b,upcomingCache);btn?.classList.remove('spin');return}
+  b.innerHTML='<div class="ld"><div class="ld-s"></div><div class="ld-t">Loading upcoming shows...</div></div>';
+  try{
+    const r=await fetch(UPCOMING_API);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const text=await r.text();
+    const parser=new DOMParser();
+    const doc=parser.parseFromString(text,'text/html');
+    const items=[...doc.querySelectorAll('.show-item')];
+    if(!items.length)throw new Error('No shows found in response');
+    const shows=items.map((el,i)=>{
+      const rankEl=el.querySelector('.rank');
+      const titleEl=el.querySelector('.show-info a strong');
+      const imgEl=el.querySelector('img');
+      const metaEl=el.querySelector('.meta');
+      const premiereEl=el.querySelector('.premiere');
+      const ratingEl=el.querySelector('.rating');
+      const summaryEl=el.querySelector('.summary');
+      return{
+        rank:rankEl?.textContent.trim()||String(i+1),
+        title:titleEl?.textContent.trim()||'Unknown',
+        img:imgEl?.src||'',
+        meta:metaEl?.textContent.trim()||'',
+        premiere:premiereEl?.textContent.replace(/⏱\s*/,'').trim()||'',
+        rating:ratingEl?.textContent.replace(/⭐\s*/,'').trim()||'',
+        summary:summaryEl?.textContent.trim()||''
+      };
+    });
+    upcomingCache=shows;upcomingCacheTime=Date.now();
+    renderUpcoming(b,shows);
+  }catch(e){b.innerHTML=`<div class="err">${e.message}</div>`}
+  btn?.classList.remove('spin');
+}
+
+let upcomingShows=[];
+function renderUpcoming(b,shows){
+  upcomingShows=shows;
+  let h='<div class="up-grid">';
+  shows.forEach((s,i)=>{
+    const imgHtml=s.img?`<img class="up-thumb" src="${s.img}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:'' ;
+    const phStyle=s.img?'display:none':'';
+    h+=`<div class="up-card" tabindex="0" data-show="${i}">
+      <div style="position:relative">
+        ${imgHtml}
+        <div class="up-thumb-placeholder" style="${phStyle}">📺</div>
+        <div class="up-rank">${s.rank}</div>
+      </div>
+      <div class="up-body">
+        <div class="up-title">${s.title}</div>
+        ${s.meta?`<div class="up-meta">${s.meta}</div>`:''}
+        <div class="up-row">
+          ${s.premiere?`<div class="up-premiere">⏱ ${s.premiere}</div>`:'<div></div>'}
+          ${s.rating?`<div class="up-rating">★ ${s.rating}</div>`:''}
+        </div>
+      </div>
+    </div>`;
+  });
+  b.innerHTML=h+'</div>';
+}
+
+document.addEventListener('click',e=>{
+  const uc=e.target.closest('.up-card[data-show]');
+  if(uc)showUpcomingDetail(Number(uc.dataset.show));
+});
+
+function showUpcomingDetail(idx){
+  const s=upcomingShows[idx];if(!s)return;
+  lastFocus=document.activeElement;
+  modalState='open';
+  modalOpenTime=Date.now();
+  const o=document.getElementById('mOverlay'),mc=document.getElementById('mContent');
+  mc.className='md';
+  mc.innerHTML=`
+    <button class="md-x" tabindex="0">✕</button>
+    ${s.img?`<img class="md-poster" src="${s.img}" style="width:320px;border-radius:14px;object-fit:cover;aspect-ratio:16/12;flex-shrink:0">`:''}
+    <div class="md-body">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px">
+        <div style="background:rgba(0,0,0,.5);color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;padding:4px 12px;border-radius:8px">#${s.rank}</div>
+        ${s.rating?`<div style="font-size:26px;font-weight:700;color:var(--gold)">★ ${s.rating}</div>`:''}
+      </div>
+      <div class="md-title" style="font-size:40px">${s.title}</div>
+      ${s.meta?`<div class="md-tag" style="font-size:24px">${s.meta}</div>`:''}
+      <div class="md-stats">
+        ${s.premiere?`<div class="md-stat" style="font-size:24px;color:var(--orange)">⏱ <strong>${s.premiere}</strong></div>`:''}
+      </div>
+      ${s.summary?`<div class="md-ov" style="font-size:26px;line-height:1.7">${s.summary}</div>`:'<div class="md-ov" style="font-size:26px;color:var(--dim);font-style:italic">No summary available.</div>'}
+    </div>`;
+  o.classList.add('show');
+  setTimeout(()=>{mc.querySelector('.md-x')?.focus()},50);
+}
+
+// ═══════ NASA GALLERY (last 15 days) ═══════
+let nasaData=[];
+let nasaCache=null,nasaCacheTime=0;
+async function loadNasa(){
+  const b=document.getElementById('nasaBody');
+  // Use cache if less than 30 min old to avoid 429
+  if(nasaCache&&Date.now()-nasaCacheTime<1800000){
+    renderNasaGrid(b);return;
+  }
+  b.innerHTML='<div class="ld"><div class="ld-s"></div><div class="ld-t">Loading NASA gallery...</div></div>';
+  try{
+    const start=new Date();start.setDate(start.getDate()-15);
+    const sd=`${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
+    // Call NASA directly — it supports CORS. Only use start_date (returns up to today).
+    const r=await fetch(`https://api.nasa.gov/planetary/apod?api_key=${NASA_KEY}&start_date=${sd}`);
+    if(!r.ok)throw new Error('NASA API returned '+r.status+(r.status===429?' — rate limited, try again in a minute':''));
+    let raw=await r.json();
+    if(!Array.isArray(raw))raw=[raw];
+    nasaData=raw.filter(d=>d.media_type==='image').reverse();
+    nasaCache=nasaData;nasaCacheTime=Date.now();
+    renderNasaGrid(b);
+  }catch(e){b.innerHTML=`<div class="err">${e.message}</div>`}
+}
+function renderNasaGrid(b){
+  if(!nasaData||!nasaData.length){b.innerHTML='<div class="err">No NASA images available.</div>';return}
+  let h='<div class="nasa-grid">';
+  nasaData.forEach((d,i)=>{
+    h+=`<div class="nasa-card" tabindex="0" data-nasa="${i}"><img class="nasa-img-thumb" src="${d.url}" loading="lazy"><div class="nasa-info"><div class="nasa-title">${d.title||''}</div><div class="nasa-date">${d.date||''}</div></div></div>`;
+  });
+  b.innerHTML=h+'</div>';
+}
+document.addEventListener('click',e=>{
+  const nc=e.target.closest('.nasa-card[data-nasa]');
+  if(nc){const d=nasaData[nc.dataset.nasa];if(d)showNasaDetail(d.hdurl||d.url,d.title||'',d.explanation||'',d.date||'')}
+});
+
+// ═══════ HISTORY ═══════
+async function loadHistory(){
+  const b=document.getElementById('historyBody');
+  b.innerHTML='<div class="ld"><div class="ld-s"></div><div class="ld-t">Loading history...</div></div>';
+  try{
+    const n=new Date(),mo=String(n.getMonth()+1).padStart(2,'0'),da=String(n.getDate()).padStart(2,'0');
+    const r=await fetch(`https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events/${mo}/${da}`);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json(),ev=(d.events||[]).slice(0,20);
+    if(!ev.length){b.innerHTML='<div class="err">No events found.</div>';return}
+    const ms=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const curYear=n.getFullYear();
+    let h=`<div class="hl">
+      <div class="h-date-banner">
+        <div class="h-date-line"></div>
+        <div class="h-date-txt">📜 ${ms[n.getMonth()]} ${n.getDate()}</div>
+        <div class="h-date-line"></div>
+      </div>`;
+    ev.forEach(e=>{
+      const yr=parseInt(e.year)||0;
+      const ago=yr>0?`${curYear-yr} yrs ago`:'';
+      h+=`<div class="hi" tabindex="0">
+        <div class="hy-wrap">
+          <div class="hy">${e.year||'?'}</div>
+          ${ago?`<div class="hy-ago">${ago}</div>`:''}
+        </div>
+        <div class="h-divider"></div>
+        <div class="ht">${e.text||''}</div>
+      </div>`;
+    });
+    b.innerHTML=h+'</div>';
+  }catch(e){b.innerHTML=`<div class="err">${e.message}</div>`}
+}
+
+// ═══════ RIDDLE ═══════
+async function loadRiddle(){
+  const b=document.getElementById('riddleBody');
+  b.innerHTML='<div class="ld"><div class="ld-s"></div><div class="ld-t">Loading riddle...</div></div>';
+  try{
+    // riddles.one API — returns {riddle, answer}
+    const r=await fetch('https://riddles-api.vercel.app/random');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const q=d.riddle||d.question||'';
+    const a=d.answer||'';
+    if(!q)throw new Error('No riddle data');
+    b.innerHTML=`<div class="fc"><div class="be">🧩</div><div class="ft" style="color:var(--orange)">${q}</div><div id="ra" style="display:none"><div class="fb" style="color:var(--green);font-size:36px;font-weight:700;margin-top:20px">${a}</div></div><button class="rv" tabindex="0" onclick="document.getElementById('ra').style.display='block';this.style.display='none'">Reveal Answer</button></div>`;
+  }catch(ex){
+    // Fallback to a local riddle if API fails
+    const fallbacks=[
+      {q:"I have cities, but no houses. Mountains, but no trees. Water, but no fish.",a:"A map"},
+      {q:"The more you take, the more you leave behind.",a:"Footsteps"},
+      {q:"What is so fragile that saying its name breaks it?",a:"Silence"},
+      {q:"I speak without a mouth and hear without ears.",a:"An echo"},
+      {q:"What can run but never walks, has a mouth but never talks?",a:"A river"}
+    ];
+    const f=fallbacks[Math.floor(Math.random()*fallbacks.length)];
+    b.innerHTML=`<div class="fc"><div class="be">🧩</div><div class="ft" style="color:var(--orange)">${f.q}</div><div id="ra" style="display:none"><div class="fb" style="color:var(--green);font-size:36px;font-weight:700;margin-top:20px">${f.a}</div></div><button class="rv" tabindex="0" onclick="document.getElementById('ra').style.display='block';this.style.display='none'">Reveal Answer</button></div>`;
+  }
+}
+
+// ═══════ JOKE ═══════
+async function loadJoke(){
+  const b=document.getElementById('jokeBody');
+  b.innerHTML='<div class="ld"><div class="ld-s"></div><div class="ld-t">Loading joke...</div></div>';
+  try{
+    // Official Joke API — returns {setup, punchline}
+    const r=await fetch('https://official-joke-api.appspot.com/random_joke');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const setup=d.setup||'';
+    const punchline=d.punchline||'';
+    if(!setup)throw new Error('No joke data');
+    const pid='pl_'+Date.now();
+    b.innerHTML=`<div class="fc"><div class="be">😂</div><div class="ft" style="color:var(--green)">${setup}</div><div id="${pid}" style="display:none"><div class="fb" style="color:var(--gold);font-size:34px;font-weight:700;margin-top:20px">${punchline}</div></div><button class="rv" tabindex="0" style="background:linear-gradient(135deg,#0a2a1a,#102520);border-color:rgba(52,211,153,.3);color:var(--green)" onclick="document.getElementById('${pid}').style.display='block';this.style.display='none'">Show Punchline</button></div>`;
+  }catch(ex){
+    const fallbacks=[
+      {s:"Why don't scientists trust atoms?",p:"Because they make up everything!"},
+      {s:"I'm reading a book about anti-gravity.",p:"It's impossible to put down!"},
+      {s:"Why did the scarecrow win an award?",p:"Because he was outstanding in his field!"},
+      {s:"What do you call a fake noodle?",p:"An impasta!"},
+      {s:"How do you organise a space party?",p:"You planet!"}
+    ];
+    const f=fallbacks[Math.floor(Math.random()*fallbacks.length)];
+    const pid='pl_'+Date.now();
+    b.innerHTML=`<div class="fc"><div class="be">😂</div><div class="ft" style="color:var(--green)">${f.s}</div><div id="${pid}" style="display:none"><div class="fb" style="color:var(--gold);font-size:34px;font-weight:700;margin-top:20px">${f.p}</div></div><button class="rv" tabindex="0" style="background:linear-gradient(135deg,#0a2a1a,#102520);border-color:rgba(52,211,153,.3);color:var(--green)" onclick="document.getElementById('${pid}').style.display='block';this.style.display='none'">Show Punchline</button></div>`;
+  }
+}
+</script>
+</body>
+</html>

@@ -108,24 +108,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleBackNavigation() {
-        // 1. If WebView has history, go back within the page
-        if (webView.canGoBack()) {
-            webView.goBack()
-            backPressedOnce = false
-            return
+        // Ask the JS app to handle back first.
+        // window.androidBack() returns true if it handled it (modal/screen close),
+        // false if we're at the home screen and should exit.
+        webView.evaluateJavascript("(function(){ return window.androidBack ? window.androidBack() : false; })()") { result ->
+            val jsHandled = result?.trim() == "true"
+            if (!jsHandled) {
+                // JS says we're at the home screen — double-press to exit
+                if (backPressedOnce) {
+                    backResetHandler.removeCallbacks(backResetRunnable)
+                    finishAndRemoveTask()
+                    return@evaluateJavascript
+                }
+                backPressedOnce = true
+                Toast.makeText(this, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                backResetHandler.removeCallbacks(backResetRunnable)
+                backResetHandler.postDelayed(backResetRunnable, 2500)
+            }
         }
-
-        // 2. Double-press to exit
-        if (backPressedOnce) {
-            backResetHandler.removeCallbacks(backResetRunnable)
-            finishAndRemoveTask()
-            return
-        }
-
-        backPressedOnce = true
-        Toast.makeText(this, "Press back again to exit", Toast.LENGTH_SHORT).show()
-        backResetHandler.removeCallbacks(backResetRunnable)
-        backResetHandler.postDelayed(backResetRunnable, 2500)
     }
 
     /**

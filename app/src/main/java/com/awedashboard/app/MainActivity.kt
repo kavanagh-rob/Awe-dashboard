@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
 
-    private val dashboardUrl = "https://kavanagh-rob.github.io/Pages/awe-dashboard.html"
+    private val dashboardUrl = "https://kavanagh-rob.github.io/Pages/awe-home.html"
 
     private var backPressedOnce = false
     private val backResetHandler = Handler(Looper.getMainLooper())

@@ -1,6 +1,7 @@
 package com.awedashboard.app
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -8,6 +9,8 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.webkit.*
+import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -20,9 +23,24 @@ class MainActivity : AppCompatActivity() {
 
     private val dashboardUrl = "https://kavanagh-rob.github.io/Pages/awe-dashboard.html"
 
+    // Double-back-to-exit
     private var backPressedOnce = false
     private val backResetHandler = Handler(Looper.getMainLooper())
     private val backResetRunnable = Runnable { backPressedOnce = false }
+
+    // Secret menu: press 1-2-3 in sequence
+    private val secretSequence = listOf(
+        KeyEvent.KEYCODE_1,
+        KeyEvent.KEYCODE_2,
+        KeyEvent.KEYCODE_3
+    )
+    private val inputBuffer = mutableListOf<Int>()
+    private val bufferResetHandler = Handler(Looper.getMainLooper())
+    private val bufferResetRunnable = Runnable { inputBuffer.clear() }
+
+    // Long-press OK detection
+    private var okDownTime = 0L
+    private val longPressThreshold = 1500L // 1.5 seconds
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,11 +112,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Modern back handler using OnBackPressedDispatcher.
-     * This catches back presses from ALL sources — hardware buttons,
-     * remote controls, gesture nav, system back, etc.
-     */
     private fun setupBackHandler() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -108,14 +121,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleBackNavigation() {
-        // 1. If WebView has history, go back within the page
         if (webView.canGoBack()) {
             webView.goBack()
             backPressedOnce = false
             return
         }
 
-        // 2. Double-press to exit
         if (backPressedOnce) {
             backResetHandler.removeCallbacks(backResetRunnable)
             finishAndRemoveTask()
@@ -128,10 +139,6 @@ class MainActivity : AppCompatActivity() {
         backResetHandler.postDelayed(backResetRunnable, 2500)
     }
 
-    /**
-     * Also intercept KEYCODE_BACK via onKeyDown as a belt-and-suspenders
-     * approach for remotes that bypass onBackPressedDispatcher.
-     */
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_BACK -> {
@@ -143,20 +150,203 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Reloading…", Toast.LENGTH_SHORT).show()
                 return true
             }
+            // Long-press OK/Select detection
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                if (event?.repeatCount == 0) {
+                    okDownTime = System.currentTimeMillis()
+                }
+                // Check for long press
+                if (event != null && event.repeatCount > 0) {
+                    val held = System.currentTimeMillis() - okDownTime
+                    if (held >= longPressThreshold) {
+                        okDownTime = 0L
+                        showSecretMenu()
+                        return true
+                    }
+                }
+                // Don't consume — let WebView handle normal OK presses
+                return super.onKeyDown(keyCode, event)
+            }
+            // Secret sequence: 1-2-3
+            KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3,
+            KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5, KeyEvent.KEYCODE_6,
+            KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8, KeyEvent.KEYCODE_9 -> {
+                checkSecretSequence(keyCode)
+                return true
+            }
         }
         return super.onKeyDown(keyCode, event)
     }
 
-    /**
-     * Final fallback — some devices/remotes dispatch back via
-     * dispatchKeyEvent rather than onKeyDown.
-     */
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
         if (event?.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-            // Already handled in onKeyDown on ACTION_DOWN, so consume the UP too
             return true
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    private fun checkSecretSequence(keyCode: Int) {
+        // Reset buffer after 3 seconds of inactivity
+        bufferResetHandler.removeCallbacks(bufferResetRunnable)
+        bufferResetHandler.postDelayed(bufferResetRunnable, 3000)
+
+        inputBuffer.add(keyCode)
+
+        // Check if the last N keys match the secret sequence
+        if (inputBuffer.size >= secretSequence.size) {
+            val tail = inputBuffer.takeLast(secretSequence.size)
+            if (tail == secretSequence) {
+                inputBuffer.clear()
+                bufferResetHandler.removeCallbacks(bufferResetRunnable)
+                showSecretMenu()
+            }
+        }
+
+        // Prevent buffer from growing forever
+        if (inputBuffer.size > 10) {
+            inputBuffer.removeAt(0)
+        }
+    }
+
+    // Saved URL presets
+    private data class UrlPreset(val label: String, val url: String)
+
+    private val urlPresets = listOf(
+        UrlPreset("🏠  Home Server", "http://192.168.68.141/dashboard/awe-home.html"),
+        UrlPreset("🐙  GitHub Pages", "https://kavanagh-rob.github.io/Pages/awe-dashboard.html")
+    )
+
+    private fun showSecretMenu() {
+        val items = arrayOf(
+            "🔗  Switch Dashboard Source",
+            "\uD83D\uDDD1  Clear Cache & Reload",
+            "\uD83D\uDD04  Hard Reload (bypass cache)",
+            "\uD83C\uDF10  Enter Custom URL",
+            "\u2139\uFE0F   App Info",
+            "✖  Cancel"
+        )
+
+        AlertDialog.Builder(this, R.style.SecretMenuTheme)
+            .setTitle("⚙ Secret Menu")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> showUrlPresets()
+                    1 -> clearCacheAndReload()
+                    2 -> hardReload()
+                    3 -> showUrlInput()
+                    4 -> showAppInfo()
+                    5 -> { /* cancel */ }
+                }
+            }
+            .show()
+    }
+
+    private fun showUrlPresets() {
+        // Build list with current indicator
+        val currentUrl = webView.url ?: ""
+        val labels = urlPresets.map { preset ->
+            val active = if (currentUrl.startsWith(preset.url.substringBefore("?")) ||
+                currentUrl == preset.url) " ✓" else ""
+            "${preset.label}$active\n${preset.url}"
+        }.toTypedArray()
+
+        AlertDialog.Builder(this, R.style.SecretMenuTheme)
+            .setTitle("🔗 Switch Dashboard Source")
+            .setItems(labels) { _, which ->
+                val selected = urlPresets[which]
+                webView.loadUrl(selected.url)
+                Toast.makeText(this, "Loading: ${selected.label.drop(4)}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun clearCacheAndReload() {
+        webView.clearCache(true)
+        webView.clearHistory()
+        webView.clearFormData()
+
+        // Clear WebView storage
+        WebStorage.getInstance().deleteAllData()
+
+        // Clear cookies
+        CookieManager.getInstance().removeAllCookies(null)
+        CookieManager.getInstance().flush()
+
+        webView.reload()
+        Toast.makeText(this, "Cache cleared & reloaded", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun hardReload() {
+        // Force bypass cache for this load
+        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        webView.reload()
+
+        // Reset cache mode after a delay so future loads use cache normally
+        Handler(Looper.getMainLooper()).postDelayed({
+            webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
+        }, 3000)
+
+        Toast.makeText(this, "Hard reload (no cache)", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showUrlInput() {
+        val input = EditText(this).apply {
+            setText(webView.url ?: dashboardUrl)
+            setTextColor(0xFFE8E8F0.toInt())
+            setHintTextColor(0xFF4A4A5A.toInt())
+            setBackgroundColor(0xFF1C1C28.toInt())
+            setPadding(32, 24, 32, 24)
+            textSize = 16f
+            inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI
+            selectAll()
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 0)
+            addView(input)
+        }
+
+        AlertDialog.Builder(this, R.style.SecretMenuTheme)
+            .setTitle("Enter URL")
+            .setView(container)
+            .setPositiveButton("Load") { _, _ ->
+                val url = input.text.toString().trim()
+                if (url.isNotEmpty()) {
+                    webView.loadUrl(url)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showAppInfo() {
+        val currentUrl = webView.url ?: "—"
+        val activePreset = urlPresets.find { currentUrl.startsWith(it.url.substringBefore("?")) }
+        val sourceName = activePreset?.label?.drop(4) ?: "Custom"
+
+        val presetList = urlPresets.joinToString("\n") { "  • ${it.label.drop(4)}: ${it.url}" }
+
+        val info = """
+            AWE Dashboard v${packageManager.getPackageInfo(packageName, 0).versionName}
+            
+            Active source: $sourceName
+            Current URL: $currentUrl
+            
+            Available sources:
+            $presetList
+            
+            Secret menu:
+            • Press 1-2-3 on number keys
+            • Long-press OK/Select (1.5s)
+        """.trimIndent()
+
+        AlertDialog.Builder(this, R.style.SecretMenuTheme)
+            .setTitle("ℹ App Info")
+            .setMessage(info)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun applyFullscreen() {
@@ -183,6 +373,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         backResetHandler.removeCallbacksAndMessages(null)
+        bufferResetHandler.removeCallbacksAndMessages(null)
         webView.destroy()
         super.onDestroy()
     }

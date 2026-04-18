@@ -8,4 +8,13 @@
         <item name="android:colorAccent">#4d8eff</item>
         <item name="android:windowFullscreen">true</item>
     </style>
+
+    <style name="SecretMenuTheme" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:windowBackground">#13131a</item>
+        <item name="android:textColor">#e8e8f0</item>
+        <item name="android:textColorPrimary">#e8e8f0</item>
+        <item name="android:textColorSecondary">#6e6e82</item>
+        <item name="colorAccent">#4d8eff</item>
+        <item name="android:background">#13131a</item>
+    </style>
 </resources>

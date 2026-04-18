@@ -21,7 +21,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
 
-    // Default URL is the home server
     private val dashboardUrl = "http://192.168.68.141/dashboard/awe-home.html"
 
     // URL presets
@@ -45,8 +44,6 @@ class MainActivity : AppCompatActivity() {
     private val inputBuffer = mutableListOf<Int>()
     private val bufferResetHandler = Handler(Looper.getMainLooper())
     private val bufferResetRunnable = Runnable { inputBuffer.clear() }
-
-    // Track if secret menu is showing (to avoid double-trigger)
     private var secretMenuShowing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -147,40 +144,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * dispatchKeyEvent runs BEFORE the WebView's JS keydown handlers.
-     * This is the only reliable way to intercept keys when the HTML
-     * page uses preventDefault() on its own keydown listener.
-     *
-     * BACK KEY: We let it pass through to the WebView so the HTML's
-     * own back navigation works. We only intercept it when the user
-     * needs to exit the app (double-back).
+     * We ONLY use dispatchKeyEvent for number keys (secret menu trigger).
+     * Everything else — back, arrows, enter, etc. — passes through
+     * untouched so the HTML's own key handlers work normally.
      */
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
         if (event == null) return super.dispatchKeyEvent(event)
 
-        // Only process on ACTION_DOWN to avoid double-firing
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
-
-                // ── SECRET SEQUENCE: number keys 1-2-3 ──
-                KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3,
-                KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5, KeyEvent.KEYCODE_6,
-                KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8, KeyEvent.KEYCODE_9,
-                KeyEvent.KEYCODE_0 -> {
-                    if (checkSecretSequence(event.keyCode)) {
-                        return true // Consumed by secret menu
-                    }
-                    return true // Consume number keys so they don't reach WebView
-                }
-
-                // ── RELOAD ──
-                KeyEvent.KEYCODE_R -> {
-                    webView.reload()
-                    Toast.makeText(this, "Reloading…", Toast.LENGTH_SHORT).show()
+                KeyEvent.KEYCODE_0, KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2,
+                KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5,
+                KeyEvent.KEYCODE_6, KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8,
+                KeyEvent.KEYCODE_9 -> {
+                    checkSecretSequence(event.keyCode)
                     return true
                 }
-
-                // ── MENU KEY (if remote has one) ──
                 KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> {
                     showSecretMenu()
                     return true
@@ -188,28 +167,24 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Consume ACTION_UP for keys we handled on ACTION_DOWN
+        // Consume ACTION_UP for number/menu keys only
         if (event.action == KeyEvent.ACTION_UP) {
             when (event.keyCode) {
-                KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3,
-                KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5, KeyEvent.KEYCODE_6,
-                KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8, KeyEvent.KEYCODE_9,
-                KeyEvent.KEYCODE_0,
-                KeyEvent.KEYCODE_R,
+                KeyEvent.KEYCODE_0, KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2,
+                KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5,
+                KeyEvent.KEYCODE_6, KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8,
+                KeyEvent.KEYCODE_9,
                 KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> {
                     return true
                 }
             }
         }
 
-        // Everything else (arrows, enter, etc.) passes through to WebView
+        // EVERYTHING else passes through to the WebView untouched
         return super.dispatchKeyEvent(event)
     }
 
-    /**
-     * Returns true if the secret sequence was completed.
-     */
-    private fun checkSecretSequence(keyCode: Int): Boolean {
+    private fun checkSecretSequence(keyCode: Int) {
         bufferResetHandler.removeCallbacks(bufferResetRunnable)
         bufferResetHandler.postDelayed(bufferResetRunnable, 3000)
 
@@ -223,15 +198,12 @@ class MainActivity : AppCompatActivity() {
                 if (!secretMenuShowing) {
                     showSecretMenu()
                 }
-                return true
             }
         }
 
         if (inputBuffer.size > 10) {
             inputBuffer.removeAt(0)
         }
-
-        return false
     }
 
     // ── SECRET MENU ──
@@ -341,7 +313,6 @@ class MainActivity : AppCompatActivity() {
             currentUrl == it.url || currentUrl.startsWith(it.url.substringBefore("?"))
         }
         val sourceName = activePreset?.label?.drop(4) ?: "Custom"
-
         val presetList = urlPresets.joinToString("\n") { "  • ${it.label.drop(4)}: ${it.url}" }
 
         val info = """
@@ -353,9 +324,7 @@ class MainActivity : AppCompatActivity() {
             Available sources:
 $presetList
             
-            Secret menu trigger:
-            • Press 1-2-3 on number keys
-            • MENU key on remote
+            Secret menu: Press 1-2-3
         """.trimIndent()
 
         AlertDialog.Builder(this, R.style.SecretMenuTheme)
@@ -408,7 +377,7 @@ $presetList
         </style></head><body>
             <h1>Connection Error</h1>
             <p>$message</p>
-            <div class="hint">Press R to reload · Press 1-2-3 for menu</div>
+            <div class="hint">Press 1-2-3 for menu</div>
         </body></html>
         """.trimIndent()
     }

@@ -150,6 +150,10 @@ class MainActivity : AppCompatActivity() {
      * dispatchKeyEvent runs BEFORE the WebView's JS keydown handlers.
      * This is the only reliable way to intercept keys when the HTML
      * page uses preventDefault() on its own keydown listener.
+     *
+     * BACK KEY: We let it pass through to the WebView so the HTML's
+     * own back navigation works. We only intercept it when the user
+     * needs to exit the app (double-back).
      */
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
         if (event == null) return super.dispatchKeyEvent(event)
@@ -157,12 +161,6 @@ class MainActivity : AppCompatActivity() {
         // Only process on ACTION_DOWN to avoid double-firing
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
-
-                // ── BACK ──
-                KeyEvent.KEYCODE_BACK -> {
-                    handleBackNavigation()
-                    return true
-                }
 
                 // ── SECRET SEQUENCE: number keys 1-2-3 ──
                 KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3,
@@ -193,7 +191,6 @@ class MainActivity : AppCompatActivity() {
         // Consume ACTION_UP for keys we handled on ACTION_DOWN
         if (event.action == KeyEvent.ACTION_UP) {
             when (event.keyCode) {
-                KeyEvent.KEYCODE_BACK,
                 KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3,
                 KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5, KeyEvent.KEYCODE_6,
                 KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8, KeyEvent.KEYCODE_9,

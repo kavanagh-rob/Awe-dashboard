@@ -13,7 +13,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -23,17 +22,11 @@ class MainActivity : AppCompatActivity() {
 
     private val dashboardUrl = "http://192.168.68.141/dashboard/awe-home.html"
 
-    // URL presets
     private data class UrlPreset(val label: String, val url: String)
     private val urlPresets = listOf(
         UrlPreset("🏠  Home Server", "http://192.168.68.141/dashboard/awe-home.html"),
         UrlPreset("🐙  GitHub Pages", "https://kavanagh-rob.github.io/Pages/awe-dashboard.html")
     )
-
-    // Double-back-to-exit
-    private var backPressedOnce = false
-    private val backResetHandler = Handler(Looper.getMainLooper())
-    private val backResetRunnable = Runnable { backPressedOnce = false }
 
     // Secret menu: press 1-2-3 in sequence
     private val secretSequence = listOf(
@@ -55,7 +48,6 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webView)
 
         setupWebView()
-        setupBackHandler()
         webView.loadUrl(dashboardUrl)
     }
 
@@ -116,42 +108,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupBackHandler() {
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                handleBackNavigation()
-            }
-        })
-    }
-
-    private fun handleBackNavigation() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-            backPressedOnce = false
-            return
-        }
-
-        if (backPressedOnce) {
-            backResetHandler.removeCallbacks(backResetRunnable)
-            finishAndRemoveTask()
-            return
-        }
-
-        backPressedOnce = true
-        Toast.makeText(this, "Press back again to exit", Toast.LENGTH_SHORT).show()
-        backResetHandler.removeCallbacks(backResetRunnable)
-        backResetHandler.postDelayed(backResetRunnable, 2500)
-    }
-
     /**
-     * We ONLY use dispatchKeyEvent for number keys (secret menu trigger).
-     * Everything else — back, arrows, enter, etc. — passes through
-     * untouched so the HTML's own key handlers work normally.
+     * ONLY intercept number keys for the 1-2-3 secret menu.
+     * Everything else — back, arrows, enter — goes straight to WebView.
      */
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
-        if (event == null) return super.dispatchKeyEvent(event)
-
-        if (event.action == KeyEvent.ACTION_DOWN) {
+        if (event != null && event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_0, KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2,
                 KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5,
@@ -160,27 +122,18 @@ class MainActivity : AppCompatActivity() {
                     checkSecretSequence(event.keyCode)
                     return true
                 }
-                KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> {
-                    showSecretMenu()
-                    return true
-                }
             }
         }
-
-        // Consume ACTION_UP for number/menu keys only
-        if (event.action == KeyEvent.ACTION_UP) {
+        if (event != null && event.action == KeyEvent.ACTION_UP) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_0, KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2,
                 KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5,
                 KeyEvent.KEYCODE_6, KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8,
-                KeyEvent.KEYCODE_9,
-                KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> {
+                KeyEvent.KEYCODE_9 -> {
                     return true
                 }
             }
         }
-
-        // EVERYTHING else passes through to the WebView untouched
         return super.dispatchKeyEvent(event)
     }
 
@@ -195,15 +148,11 @@ class MainActivity : AppCompatActivity() {
             if (tail == secretSequence) {
                 inputBuffer.clear()
                 bufferResetHandler.removeCallbacks(bufferResetRunnable)
-                if (!secretMenuShowing) {
-                    showSecretMenu()
-                }
+                if (!secretMenuShowing) showSecretMenu()
             }
         }
 
-        if (inputBuffer.size > 10) {
-            inputBuffer.removeAt(0)
-        }
+        if (inputBuffer.size > 10) inputBuffer.removeAt(0)
     }
 
     // ── SECRET MENU ──
@@ -299,9 +248,7 @@ class MainActivity : AppCompatActivity() {
             .setView(container)
             .setPositiveButton("Load") { _, _ ->
                 val url = input.text.toString().trim()
-                if (url.isNotEmpty()) {
-                    webView.loadUrl(url)
-                }
+                if (url.isNotEmpty()) webView.loadUrl(url)
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -357,7 +304,6 @@ $presetList
     }
 
     override fun onDestroy() {
-        backResetHandler.removeCallbacksAndMessages(null)
         bufferResetHandler.removeCallbacksAndMessages(null)
         webView.destroy()
         super.onDestroy()

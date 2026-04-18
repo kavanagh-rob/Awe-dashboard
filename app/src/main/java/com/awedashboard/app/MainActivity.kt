@@ -21,7 +21,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
 
-    private val dashboardUrl = "https://kavanagh-rob.github.io/Pages/awe-dashboard.html"
+    // Default URL is the home server
+    private val dashboardUrl = "http://192.168.68.141/dashboard/awe-home.html"
+
+    // URL presets
+    private data class UrlPreset(val label: String, val url: String)
+    private val urlPresets = listOf(
+        UrlPreset("🏠  Home Server", "http://192.168.68.141/dashboard/awe-home.html"),
+        UrlPreset("🐙  GitHub Pages", "https://kavanagh-rob.github.io/Pages/awe-dashboard.html")
+    )
 
     // Double-back-to-exit
     private var backPressedOnce = false
@@ -38,9 +46,8 @@ class MainActivity : AppCompatActivity() {
     private val bufferResetHandler = Handler(Looper.getMainLooper())
     private val bufferResetRunnable = Runnable { inputBuffer.clear() }
 
-    // Long-press OK detection
-    private var okDownTime = 0L
-    private val longPressThreshold = 1500L // 1.5 seconds
+    // Track if secret menu is showing (to avoid double-trigger)
+    private var secretMenuShowing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -139,84 +146,103 @@ class MainActivity : AppCompatActivity() {
         backResetHandler.postDelayed(backResetRunnable, 2500)
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_BACK -> {
-                handleBackNavigation()
-                return true
-            }
-            KeyEvent.KEYCODE_R -> {
-                webView.reload()
-                Toast.makeText(this, "Reloading…", Toast.LENGTH_SHORT).show()
-                return true
-            }
-            // Long-press OK/Select detection
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                if (event?.repeatCount == 0) {
-                    okDownTime = System.currentTimeMillis()
-                }
-                // Check for long press
-                if (event != null && event.repeatCount > 0) {
-                    val held = System.currentTimeMillis() - okDownTime
-                    if (held >= longPressThreshold) {
-                        okDownTime = 0L
-                        showSecretMenu()
-                        return true
-                    }
-                }
-                // Don't consume — let WebView handle normal OK presses
-                return super.onKeyDown(keyCode, event)
-            }
-            // Secret sequence: 1-2-3
-            KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3,
-            KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5, KeyEvent.KEYCODE_6,
-            KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8, KeyEvent.KEYCODE_9 -> {
-                checkSecretSequence(keyCode)
-                return true
-            }
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
+    /**
+     * dispatchKeyEvent runs BEFORE the WebView's JS keydown handlers.
+     * This is the only reliable way to intercept keys when the HTML
+     * page uses preventDefault() on its own keydown listener.
+     */
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
-        if (event?.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-            return true
+        if (event == null) return super.dispatchKeyEvent(event)
+
+        // Only process on ACTION_DOWN to avoid double-firing
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+
+                // ── BACK ──
+                KeyEvent.KEYCODE_BACK -> {
+                    handleBackNavigation()
+                    return true
+                }
+
+                // ── SECRET SEQUENCE: number keys 1-2-3 ──
+                KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3,
+                KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5, KeyEvent.KEYCODE_6,
+                KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8, KeyEvent.KEYCODE_9,
+                KeyEvent.KEYCODE_0 -> {
+                    if (checkSecretSequence(event.keyCode)) {
+                        return true // Consumed by secret menu
+                    }
+                    return true // Consume number keys so they don't reach WebView
+                }
+
+                // ── RELOAD ──
+                KeyEvent.KEYCODE_R -> {
+                    webView.reload()
+                    Toast.makeText(this, "Reloading…", Toast.LENGTH_SHORT).show()
+                    return true
+                }
+
+                // ── MENU KEY (if remote has one) ──
+                KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> {
+                    showSecretMenu()
+                    return true
+                }
+            }
         }
+
+        // Consume ACTION_UP for keys we handled on ACTION_DOWN
+        if (event.action == KeyEvent.ACTION_UP) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_BACK,
+                KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3,
+                KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_5, KeyEvent.KEYCODE_6,
+                KeyEvent.KEYCODE_7, KeyEvent.KEYCODE_8, KeyEvent.KEYCODE_9,
+                KeyEvent.KEYCODE_0,
+                KeyEvent.KEYCODE_R,
+                KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> {
+                    return true
+                }
+            }
+        }
+
+        // Everything else (arrows, enter, etc.) passes through to WebView
         return super.dispatchKeyEvent(event)
     }
 
-    private fun checkSecretSequence(keyCode: Int) {
-        // Reset buffer after 3 seconds of inactivity
+    /**
+     * Returns true if the secret sequence was completed.
+     */
+    private fun checkSecretSequence(keyCode: Int): Boolean {
         bufferResetHandler.removeCallbacks(bufferResetRunnable)
         bufferResetHandler.postDelayed(bufferResetRunnable, 3000)
 
         inputBuffer.add(keyCode)
 
-        // Check if the last N keys match the secret sequence
         if (inputBuffer.size >= secretSequence.size) {
             val tail = inputBuffer.takeLast(secretSequence.size)
             if (tail == secretSequence) {
                 inputBuffer.clear()
                 bufferResetHandler.removeCallbacks(bufferResetRunnable)
-                showSecretMenu()
+                if (!secretMenuShowing) {
+                    showSecretMenu()
+                }
+                return true
             }
         }
 
-        // Prevent buffer from growing forever
         if (inputBuffer.size > 10) {
             inputBuffer.removeAt(0)
         }
+
+        return false
     }
 
-    // Saved URL presets
-    private data class UrlPreset(val label: String, val url: String)
-
-    private val urlPresets = listOf(
-        UrlPreset("🏠  Home Server", "http://192.168.68.141/dashboard/awe-home.html"),
-        UrlPreset("🐙  GitHub Pages", "https://kavanagh-rob.github.io/Pages/awe-dashboard.html")
-    )
+    // ── SECRET MENU ──
 
     private fun showSecretMenu() {
+        if (secretMenuShowing) return
+        secretMenuShowing = true
+
         val items = arrayOf(
             "🔗  Switch Dashboard Source",
             "\uD83D\uDDD1  Clear Cache & Reload",
@@ -238,15 +264,15 @@ class MainActivity : AppCompatActivity() {
                     5 -> { /* cancel */ }
                 }
             }
+            .setOnDismissListener { secretMenuShowing = false }
             .show()
     }
 
     private fun showUrlPresets() {
-        // Build list with current indicator
         val currentUrl = webView.url ?: ""
         val labels = urlPresets.map { preset ->
-            val active = if (currentUrl.startsWith(preset.url.substringBefore("?")) ||
-                currentUrl == preset.url) " ✓" else ""
+            val active = if (currentUrl == preset.url ||
+                currentUrl.startsWith(preset.url.substringBefore("?"))) " ✓" else ""
             "${preset.label}$active\n${preset.url}"
         }.toTypedArray()
 
@@ -265,28 +291,19 @@ class MainActivity : AppCompatActivity() {
         webView.clearCache(true)
         webView.clearHistory()
         webView.clearFormData()
-
-        // Clear WebView storage
         WebStorage.getInstance().deleteAllData()
-
-        // Clear cookies
         CookieManager.getInstance().removeAllCookies(null)
         CookieManager.getInstance().flush()
-
         webView.reload()
         Toast.makeText(this, "Cache cleared & reloaded", Toast.LENGTH_SHORT).show()
     }
 
     private fun hardReload() {
-        // Force bypass cache for this load
         webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
         webView.reload()
-
-        // Reset cache mode after a delay so future loads use cache normally
         Handler(Looper.getMainLooper()).postDelayed({
             webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
         }, 3000)
-
         Toast.makeText(this, "Hard reload (no cache)", Toast.LENGTH_SHORT).show()
     }
 
@@ -323,7 +340,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAppInfo() {
         val currentUrl = webView.url ?: "—"
-        val activePreset = urlPresets.find { currentUrl.startsWith(it.url.substringBefore("?")) }
+        val activePreset = urlPresets.find {
+            currentUrl == it.url || currentUrl.startsWith(it.url.substringBefore("?"))
+        }
         val sourceName = activePreset?.label?.drop(4) ?: "Custom"
 
         val presetList = urlPresets.joinToString("\n") { "  • ${it.label.drop(4)}: ${it.url}" }
@@ -335,11 +354,11 @@ class MainActivity : AppCompatActivity() {
             Current URL: $currentUrl
             
             Available sources:
-            $presetList
+$presetList
             
-            Secret menu:
+            Secret menu trigger:
             • Press 1-2-3 on number keys
-            • Long-press OK/Select (1.5s)
+            • MENU key on remote
         """.trimIndent()
 
         AlertDialog.Builder(this, R.style.SecretMenuTheme)
@@ -392,7 +411,7 @@ class MainActivity : AppCompatActivity() {
         </style></head><body>
             <h1>Connection Error</h1>
             <p>$message</p>
-            <div class="hint">Press R to reload</div>
+            <div class="hint">Press R to reload · Press 1-2-3 for menu</div>
         </body></html>
         """.trimIndent()
     }
